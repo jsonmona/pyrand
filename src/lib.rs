@@ -1,4 +1,4 @@
-#![feature(array_chunks)]
+#![feature(iter_array_chunks)]
 
 //! Implements a 32-bit mersenne twister specifically aiming to be able to
 //! reproduce the results of python's `random` module.
@@ -300,8 +300,9 @@ impl PySeedable<Vec<u8>> for PyMt19937 {
         bytes.extend(vec![0; 4 - bytes.len() % 4]);
         // convert padded bytes into 32-bit values by grouping in blocks of 4
         let key: Vec<_> = bytes
+            .into_iter()
             .array_chunks()
-            .map(|b| u32::from_le_bytes(*b))
+            .map(|b| u32::from_le_bytes(b))
             .collect();
         let stripped = strip_suffix_iter(&key, &[0]).unwrap_or(&key);
         PyMt19937::init_by_array(stripped)
