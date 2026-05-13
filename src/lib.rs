@@ -297,7 +297,7 @@ impl PySeedable<Vec<u8>> for PyMt19937 {
         // right pad with enough bytes to make the total length divisible by 4
         bytes.extend(vec![0; 4 - bytes.len() % 4]);
         // convert padded bytes into 32-bit values by grouping in blocks of 4
-        let key = group_u8_to_u32_le(&bytes);
+        let key = group_u8_to_u32_le(&bytes).unwrap().collect::<Vec<_>>();
         let stripped = strip_suffix_iter(&key, &[0]).unwrap_or(&key);
         PyMt19937::init_by_array(stripped)
     }
@@ -349,16 +349,12 @@ impl PySeedable<u32> for PyMt19937 {
 }
 
 /// Group u8's into u32's in little endian.
-fn group_u8_to_u32_le(bytes: &[u8]) -> Vec<u32> {
-    assert!(bytes.len() % 4 == 0, "length of bytes must be already aligned");
-    let mut output = Vec::with_capacity(bytes.len() / 4);
-
-    for i in (0..bytes.len()).step_by(4) {
-        let b = &bytes[i..i+4];
-        output.push(u32::from_le_bytes(b.try_into().expect("correct length")));
+fn group_u8_to_u32_le(bytes: &[u8]) -> Result<impl Iterator<Item = u32> + '_, &'static str> {
+    if !bytes.len().is_multiple_of(4) {
+        Err("length of bytes must be already aligned")
+    } else {
+        Ok(bytes.chunks_exact(4).map(|b| u32::from_le_bytes(b.try_into().expect("correct length"))))
     }
-
-    output
 }
 
 /// Strips the given suffix as often as possible.
